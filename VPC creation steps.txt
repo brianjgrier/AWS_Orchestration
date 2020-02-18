@@ -1,0 +1,38 @@
+Create VPC	(Need vpc_id and region)
+	Create gateway
+	Create security groups
+
+	Create Subnets (Iterate through table "subnets". This this case there are three)
+		Create Public Net 1 - associate with VPC gateway
+		Create Public Net 2 - NAT (public subnets only)
+		Create Private Net
+
+Create EC2 VMs
+	Bastion/Jump (no second disk)
+	PostgreSQL1  (20Gb EBS Volume)
+	PostgreSQL2  (20Gb EBS Volume)
+	PGPool       (20Gb EBS Volume)
+	JIRA         (no second disk)
+	Confluence   (no second disk)
+
+
+Creating an EC2 VM
+
+	NetworkInterfaces=[
+    		{
+        		'DeviceIndex': 0,
+        		'SubnetId' : 'subnet-xxxxxx',
+        		'Groups': [
+            			'sg-xxxxxx','sg-xxxx','sg-xxxxxx'
+        			  ],
+        		'AssociatePublicIpAddress': True            
+    		},
+
+Create config entry for ssh
+Create host file entries for Ansible
+Have Ansible create ALM users 
+	create users
+	add to sudoers
+	push public keys
+Add new vpc to backup scheduler
+

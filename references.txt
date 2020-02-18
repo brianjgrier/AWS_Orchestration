@@ -1,0 +1,81 @@
+import boto.ec2
+from util import aws_conf
+
+conn = boto.ec2.connect_to_region(aws_conf['AWS_REGION'],
+                                  aws_access_key_id=aws_conf['AWS_ACCESS_KEY_ID'],
+                                  aws_secret_access_key=aws_conf['AWS_SECRET_ACCESS_KEY'])
+info = {}
+def _create_interface(domain='vpc', public=False,
+                      subnet=None, groups=None,
+                      description=None, index=0):
+
+    eni = conn.create_network_interface(subnet, groups=groups, description=description)
+    info['private_ip_address'] = eni.private_ip_address
+
+    if public:
+        eip = conn.allocate_address(domain='vpc')
+        aa = conn.associate_address(allocation_id=eip.allocation_id, network_interface_id=eni.id)
+        info['public_ip_address'] = eip.public_ip
+
+    interface = boto.ec2.networkinterface.NetworkInterfaceSpecification()
+    interface.network_interface_id=eni.id
+    interface.device_index=index
+    interface.description=description
+
+    return interface
+def _create_instance(ami=None, key=None,
+                     user_data=None, _type='c1.medium',
+                     ifaces=None):
+    i = conn.run_instances(ami,
+                           key_name=key,
+                           user_data=user_data,
+                           instance_type=_type,
+                           network_interfaces=ifaces)
+    info['Instance'] = i.instances[0].id
+    return info
+
+eth0 = _create_interface(domain='vpc', public=True,
+                         subnet='subnet-28604231', groups=['sg-5bca3be2'],
+                         description='TESTING', index=0)
+
+_create_instance(ami='ami-e24364a3', key='your-key', ifaces=eth0)
+The idea is that you:
+
+Create a network interface
+Request a dynamically allocated elastic ip
+Assign elastic ip to new interface id
+Create a network interface object (boto requirement)
+Use the network interface object when specifying the network interface on the new machine.
+I'm not too familiar with ruby, yet, else I'd would have written it up tonight. This should give you a good idea of how to achieve this goal.
+
+
+
+
+
+
+import boto3
+ec2 = boto3.resource('ec2', region_name="eu-west-2")
+client = boto3.client('ec2', region_name="eu-west-2")
+vpc = ec2.create_vpc(CidrBlock='10.10.0.0/16')
+subnet1 = vpc.create_subnet(CidrBlock='10.10.1.0/24',AvailabilityZone='eu-west-2a')
+subnet1.meta.client.modify_subnet_attribute(SubnetId=subnet1.id, MapPublicIpOnLaunch={"Value": True})
+
+eip_for_nat_gateway = ec2_client.allocate_address(Domain='vpc')
+>>> a = client.describe_addresses()
+>>> for b in a['Addresses']:
+...print b['AllocationId']
+eipalloc-3790c652
+>>> c= b['AllocationId']
+>>> print c
+eipalloc-3790c652
+
+#Now I assign c as AllocationId
+nat_gw = client.create_nat_gateway(SubnetId=subnet1.id,AllocationId=c)
+
+
+http://stackoverflow.com/questions/38690012/aws-vpc-internet-gateway-vs-nat
+
+http://boto3.readthedocs.io/en/latest/reference/services/ec2.html
+
+
+http://stackoverflow.com/questions/36454552/in-boto3-how-does-one-assign-a-public-ip-when-creating-an-instance
